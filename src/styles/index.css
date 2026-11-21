@@ -34,6 +34,11 @@ body,
   height: 100%;
 }
 
+/* 浮层（提示框等）在窄屏可能超界，裁掉而不是产生横向滚动 */
+html {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   background: var(--color-ink);

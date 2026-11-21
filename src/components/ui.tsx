@@ -1,5 +1,39 @@
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
+import { lookupTerm, LEVEL_NOTE } from '../data/glossary'
+
+/** 术语：点线底纹 + 悬停/聚焦浮出白话与出处 */
+export function Term({ k, children, className = '' }: { k: string; children?: ReactNode; className?: string }) {
+  const entry = lookupTerm(k)
+  if (!entry) return <span className={className}>{children ?? k}</span>
+  return (
+    <span className={`group/term relative inline-flex cursor-help ${className}`} tabIndex={0}>
+      <span className="border-b border-dotted border-[#8a6f3c]/60">{children ?? k}</span>
+      <span
+        className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-[200px] max-w-[calc(100vw-28px)] -translate-x-1/2 border border-[rgba(216,176,106,0.28)] bg-[#0b0b13] px-3 py-2 text-left opacity-0 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.9)] transition-opacity duration-200 group-hover/term:opacity-100 group-focus/term:opacity-100"
+        role="tooltip"
+      >
+        <span className="block text-[0.66rem] leading-[1.7] text-[#cfcbdb]">{entry.plain}</span>
+        <span className="mt-1.5 flex items-center gap-1 border-t border-white/8 pt-1.5 text-[0.56rem] text-[#6f6c7d]">
+          <span>{entry.level}</span>
+          <span>{entry.source}</span>
+        </span>
+      </span>
+    </span>
+  )
+}
+
+export function SourceTag({ level, text }: { level: keyof typeof LEVEL_NOTE; text?: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 border border-[rgba(216,176,106,0.2)] bg-[rgba(216,176,106,0.04)] px-1.5 py-0.5 text-[0.56rem] text-[#8a7a5a]"
+      title={LEVEL_NOTE[level]}
+    >
+      <span>{level}</span>
+      <span>{text ?? LEVEL_NOTE[level]}</span>
+    </span>
+  )
+}
 
 export function SectionTitle({
   index,

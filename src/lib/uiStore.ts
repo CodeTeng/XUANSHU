@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type RouteKey = 'home' | 'bazi' | 'ziwei' | 'qimen' | 'tarot' | 'love' | 'fengshui'
+export type RouteKey = 'home' | 'bazi' | 'ziwei' | 'qimen' | 'tarot' | 'love' | 'fengshui' | 'about'
 
 interface UiState {
   route: RouteKey
@@ -26,6 +26,6 @@ export const useUi = create<UiState>((set) => ({
 
 export function routeFromHash(): RouteKey {
   const h = window.location.hash.replace(/^#\/?/, '').split('?')[0]
-  const allowed: RouteKey[] = ['bazi', 'ziwei', 'qimen', 'tarot', 'love', 'fengshui']
+  const allowed: RouteKey[] = ['bazi', 'ziwei', 'qimen', 'tarot', 'love', 'fengshui', 'about']
   return (allowed.includes(h as RouteKey) ? h : 'home') as RouteKey
 }

@@ -13,6 +13,7 @@ const QimenPage = lazy(() => import('./pages/Qimen'))
 const TarotPage = lazy(() => import('./pages/Tarot'))
 const LovePage = lazy(() => import('./pages/Love'))
 const FengshuiPage = lazy(() => import('./pages/Fengshui'))
+const MethodPage = lazy(() => import('./pages/Method'))
 
 function PageFallback() {
   return (
@@ -132,12 +133,22 @@ export default function App() {
               {route === 'tarot' && <TarotPage />}
               {route === 'love' && <LovePage />}
               {route === 'fengshui' && <FengshuiPage />}
+              {route === 'about' && <MethodPage />}
             </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>
 
       <footer className="relative z-10 border-t border-white/5 px-5 py-6 text-center sm:px-8">
+        <div className="mb-2.5 flex items-center justify-center gap-4 text-[0.66rem]">
+          <button onClick={() => goto('about')} className="text-[#8a7a5a] transition hover:text-[#d8b06a]">
+            方法与出处
+          </button>
+          <span className="h-3 w-[1px] bg-white/10" />
+          <button onClick={openSettings} className="text-[#8a7a5a] transition hover:text-[#d8b06a]">
+            接入模型
+          </button>
+        </div>
         <p className="text-[0.66rem] leading-relaxed text-[#5f5c6d]">
           排盘由确定性算法完成，解读由你接入的模型完成 · 内容为传统文化研究与娱乐参考，不构成医疗、法律、投资建议
         </p>
