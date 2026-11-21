@@ -63,6 +63,8 @@ export interface BaziChart {
   pillars: Pillar[]
   wuxingCount: Record<WuXing, number>
   hiddenDetail: Record<WuXing, string[]>
+  /** 原局两两合冲刑害 */
+  relations: NatalRelations
   /** 大运（不含起运前） */
   daYun: DaYun[]
   startLuck: { years: number; months: number; days: number; forward: boolean; text: string }
@@ -71,7 +73,122 @@ export interface BaziChart {
   shenSha: { name: string; where: string; nature: '吉' | '凶' | '中'; note: string }[]
   taiYuan: string
   mingGong: string
+  /** 夜子时 / 早子时，非子时为空 */
+  zishi: string
   warnings: string[]
+}
+
+export interface PillarRelation {
+  kind: '合' | '六合' | '冲' | '刑' | '自刑' | '害'
+  /** 如「年支」「月干」 */
+  a: string
+  b: string
+  chars: string
+  label: string
+  color: string
+  dashed: boolean
+}
+
+export interface NatalCombo {
+  kind: '三合' | '三会' | '三合缺一'
+  chars: string
+  members: string[]
+  wuxing?: string
+  missing?: string
+  label: string
+}
+
+export interface NatalRelations {
+  gan: PillarRelation[]
+  zhi: PillarRelation[]
+  combos: NatalCombo[]
+}
+
+/* ---------------- 合冲刑害表（照 kanyu/ganzhi.py） ---------------- */
+
+const GAN_HE: [string, string, string][] = [
+  ['甲', '己', '土'], ['乙', '庚', '金'], ['丙', '辛', '水'], ['丁', '壬', '木'], ['戊', '癸', '火'],
+]
+const ZHI_LIUHE: [string, string][] = [['子', '丑'], ['寅', '亥'], ['卯', '戌'], ['辰', '酉'], ['巳', '申'], ['午', '未']]
+const ZHI_HAI: [string, string][] = [['子', '未'], ['丑', '午'], ['寅', '巳'], ['卯', '辰'], ['申', '亥'], ['酉', '戌']]
+/** 三刑按原文两两相刑 */
+const ZHI_XING: { pair: [string, string]; name: string }[] = [
+  { pair: ['寅', '巳'], name: '无恩之刑' }, { pair: ['巳', '申'], name: '无恩之刑' }, { pair: ['申', '寅'], name: '无恩之刑' },
+  { pair: ['丑', '戌'], name: '恃势之刑' }, { pair: ['戌', '未'], name: '恃势之刑' }, { pair: ['未', '丑'], name: '恃势之刑' },
+  { pair: ['子', '卯'], name: '无礼之刑' },
+]
+const ZI_XING = new Set(['辰', '午', '酉', '亥'])
+const SANHE: Record<string, string> = { 申子辰: '水', 亥卯未: '木', 寅午戌: '火', 巳酉丑: '金' }
+const SANHUI: Record<string, string> = { 寅卯辰: '木', 巳午未: '火', 申酉戌: '金', 亥子丑: '水' }
+
+const REL_COLOR: Record<string, string> = {
+  合: '#d8b06a', 六合: '#d8b06a', 冲: '#c0392b', 刑: '#b8473a', 自刑: '#b8473a', 害: '#8a6f3c',
+}
+
+function relCfg(kind: PillarRelation['kind']): { color: string; dashed: boolean } {
+  return { color: REL_COLOR[kind], dashed: kind === '刑' || kind === '自刑' || kind === '害' }
+}
+
+const pairHas = (list: [string, string][], a: string, b: string) =>
+  list.some(([x, y]) => (x === a && y === b) || (x === b && y === a))
+
+function pairRelations(a: string, b: string): PillarRelation['kind'][] {
+  const out: PillarRelation['kind'][] = []
+  if (GAN_HE.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) out.push('合')
+  if (pairHas(ZHI_LIUHE, a, b)) out.push('六合')
+  if ((ZHI.indexOf(a as never) - ZHI.indexOf(b as never) + 12) % 12 === 6) out.push('冲')
+  if (a === b && ZI_XING.has(a)) out.push('自刑')
+  else if (ZHI_XING.some((x) => (x.pair[0] === a && x.pair[1] === b) || (x.pair[1] === a && x.pair[0] === b))) out.push('刑')
+  if (pairHas(ZHI_HAI, a, b)) out.push('害')
+  return out
+}
+
+/** 四柱两两关系 + 三合三会（三字缺一不成局） */
+export function natalRelations(pillars: Pillar[]): NatalRelations {
+  const ganRels: PillarRelation[] = []
+  const zhiRels: PillarRelation[] = []
+  for (let i = 0; i < pillars.length; i++) {
+    for (let j = i + 1; j < pillars.length; j++) {
+      const A = pillars[i], B = pillars[j]
+      for (const k of pairRelations(A.gan, B.gan)) {
+        ganRels.push({
+          kind: k, a: `${A.label}干`, b: `${B.label}干`, chars: A.gan + B.gan,
+          label: `${A.label}${A.gan}、${B.label}${B.gan} ${k}`, ...relCfg(k),
+        })
+      }
+      for (const k of pairRelations(A.zhi, B.zhi)) {
+        zhiRels.push({
+          kind: k, a: `${A.label}支`, b: `${B.label}支`, chars: A.zhi + B.zhi,
+          label: `${A.label}${A.zhi}、${B.label}${B.zhi} ${k === '刑' ? (ZHI_XING.find((x) => (x.pair[0] === A.zhi && x.pair[1] === B.zhi) || (x.pair[1] === A.zhi && x.pair[0] === B.zhi))?.name ?? '刑') : k}`,
+          ...relCfg(k),
+        })
+      }
+    }
+  }
+
+  const combos: NatalCombo[] = []
+  const present: Record<string, string[]> = {}
+  for (const p of pillars) (present[p.zhi] ||= []).push(p.label)
+  for (const [table, kind] of [[SANHE, '三合'], [SANHUI, '三会']] as [Record<string, string>, '三合' | '三会'][]) {
+    for (const [trio, wx] of Object.entries(table)) {
+      const hit = [...trio].filter((z) => present[z])
+      if (hit.length === 3) {
+        combos.push({
+          kind, chars: trio, wuxing: wx,
+          members: [...trio].flatMap((z) => present[z].map((l) => `${l}${z}`)),
+          label: `${trio}${kind}${wx}${kind === '三合' ? '局' : '方'}`,
+        })
+      } else if (kind === '三合' && hit.length === 2) {
+        const missing = [...trio].find((z) => !present[z])!
+        combos.push({
+          kind: '三合缺一', chars: hit.join(''), wuxing: wx, missing,
+          members: hit.flatMap((z) => present[z].map((l) => `${l}${z}`)),
+          label: `${hit.join('')}三合缺${missing}，不成局`,
+        })
+      }
+    }
+  }
+  return { gan: ganRels, zhi: zhiRels, combos }
 }
 
 const PILLAR_LABELS = { year: '年柱', month: '月柱', day: '日柱', time: '时柱' } as const
@@ -123,7 +240,18 @@ export function calcBazi(input: BaziInput): BaziChart {
     solar = Solar.fromYmdHms(input.year, input.month, input.day, input.hour, input.minute, 0)
   }
   const lunar = solar.getLunar()
-  const ec = lunar.getEightChar()
+
+  // 夜子时：pai_pan.py 的口径是「23:00 起用次日日柱」。lunar-javascript 的
+  // EightChar 按 0 点分日，会差一整柱，这里显式取次日 00:30 的盘。
+  const isLateZi = input.hour >= 23 && !input.unknownHour
+  let ecSolar = solar
+  if (isLateZi) {
+    const d = new Date(input.year, input.month - 1, input.day + 1, 0, 30)
+    ecSolar = Solar.fromYmdHms(d.getFullYear(), d.getMonth() + 1, d.getDate(), 0, 30, 0)
+    warnings.push('23:00 后出生按夜子时法：日柱取次日，时柱为子时。另有流派以当日日柱论，属口径分歧')
+  }
+  const ec = ecSolar.getLunar().getEightChar()
+  const zishi = input.unknownHour ? '' : input.hour >= 23 ? '夜子时' : input.hour === 0 ? '早子时' : ''
 
   // 节气交界提示：距离节令 24 小时内，月柱口径可能存疑
   try {
@@ -275,6 +403,7 @@ export function calcBazi(input: BaziInput): BaziChart {
     pillars,
     wuxingCount,
     hiddenDetail,
+    relations: natalRelations(pillars),
     daYun,
     startLuck,
     currentDaYunIndex,
@@ -282,6 +411,7 @@ export function calcBazi(input: BaziInput): BaziChart {
     shenSha,
     taiYuan: ec.getTaiYuan(),
     mingGong: ec.getMingGong(),
+    zishi,
     warnings,
   }
 }
@@ -300,7 +430,10 @@ export function baziToText(c: BaziChart): string {
         .join('、')}；纳音${p.naYin}；地势${p.diShi}；旬空${p.xunKong}）`,
     )
   }
-  lines.push(`日主：${c.dayMaster}（${c.dayMasterWuXing}）。胎元：${c.taiYuan}；命宫：${c.mingGong}`)
+  lines.push(`日主：${c.dayMaster}（${c.dayMasterWuXing}）。胎元：${c.taiYuan}；命宫：${c.mingGong}${c.zishi ? `；${c.zishi}` : ''}`)
+  lines.push('')
+  const rels = [...c.relations.gan.map((r) => r.label), ...c.relations.zhi.map((r) => r.label), ...c.relations.combos.map((r) => r.label)]
+  lines.push(`原局合冲刑害：${rels.length ? rels.join('；') : '四柱之间无明显的合冲刑害'}`)
   lines.push('')
   lines.push(`五行个数（天干 1、地支本气 1 计）：${WUXING.map((w) => `${w}${c.wuxingCount[w]}`).join(' ')}`)
   for (const w of WUXING) {

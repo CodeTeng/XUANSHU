@@ -5,9 +5,30 @@ import { WUXING, WUXING_COLOR, SHICHEN, SHICHEN_RANGE } from '../lib/constants'
 import { useUi } from '../lib/uiStore'
 import { baziPrompt } from '../lib/prompts'
 import ReadingPanel, { useReading } from '../components/ReadingPanel'
-import { SectionTitle, Field, SegTabs, Stat, Badge, Empty, Reveal } from '../components/ui'
+import { SectionTitle, Field, SegTabs, Stat, Badge, Empty, Reveal, Term } from '../components/ui'
 
 const YEARS = Array.from({ length: 101 }, (_, i) => 1920 + i).reverse()
+
+/** 同一对柱子之间的多种关系合并成一条弧，颜色取最强者 */
+const REL_PRIORITY: Record<string, number> = { 冲: 4, 刑: 3, 自刑: 3, 害: 2, 六合: 1, 合: 1 }
+
+function groupRels(list: { a: string; b: string; kind: string; color: string; dashed: boolean; label: string }[]) {
+  const map = new Map<string, { a: string; b: string; kinds: string[]; color: string; dashed: boolean; labels: string[] }>()
+  for (const r of list) {
+    const key = [r.a, r.b].sort().join('|')
+    if (!map.has(key)) {
+      map.set(key, { a: r.a, b: r.b, kinds: [], color: r.color, dashed: r.dashed, labels: [] })
+    }
+    const g = map.get(key)!
+    g.kinds.push(r.kind)
+    g.labels.push(r.label)
+    if ((REL_PRIORITY[r.kind] ?? 0) > (REL_PRIORITY[g.kinds[0]] ?? 0)) {
+      g.color = r.color
+      g.dashed = r.dashed
+    }
+  }
+  return [...map.values()]
+}
 
 export default function BaziPage() {
   const openSettings = useUi((s) => s.openSettings)
@@ -210,43 +231,136 @@ export default function BaziPage() {
 
               {/* 四柱 */}
               <div className="panel corner-frame p-5">
-                <SectionTitle index="PILLARS" title="四柱命盘" desc="逐柱翻开 · 十神以日干为「我」推定" />
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                  {chart.data.pillars.map((p, i) => (
-                    <Reveal key={p.key} delay={i * 0.09}>
-                      <div className="group relative overflow-hidden border border-white/8 bg-[#0a0a12]/70 p-3 text-center transition-colors hover:border-[rgba(216,176,106,0.32)]">
-                        <div className="flex items-center justify-between text-[0.6rem] tracking-[0.16em] text-[#6f6c7d]">
-                          <span>{p.label}</span>
-                          <span style={{ color: WUXING_COLOR[p.ganWuXing] }}>{p.ganWuXing}</span>
-                        </div>
+                <SectionTitle index="PILLARS" title="四柱命盘" desc="逐柱翻开 · 十干十神以日干为「我」推定 · 柱间弧线标合冲刑害" />
+                <div className="relative mt-11 mb-11">
+                  {/* 天干弧线 */}
+                  <svg
+                    className="absolute inset-x-0 -top-[66px] hidden h-[66px] w-full sm:block"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    {groupRels(chart.data.relations.gan).map((g, i) => {
+                      const n = chart.data.pillars.length
+                      const ia = chart.data.pillars.findIndex((p) => g.a.startsWith(p.label))
+                      const ib = chart.data.pillars.findIndex((p) => g.b.startsWith(p.label))
+                      if (ia < 0 || ib < 0) return null
+                      const x1 = ((ia + 0.5) / n) * 100
+                      const x2 = ((ib + 0.5) / n) * 100
+                      const h = 40 + (i % 3) * 20
+                      return (
+                        <path
+                          key={`g${i}`}
+                          d={`M ${x1} 100 Q ${(x1 + x2) / 2} ${100 - h} ${x2} 100`}
+                          fill="none"
+                          stroke={g.color}
+                          strokeWidth={1.6}
+                          strokeDasharray={g.dashed ? '5 4' : undefined}
+                          vectorEffect="non-scaling-stroke"
+                          opacity={0.95}
+                        >
+                          <title>{g.labels.join('；')}</title>
+                        </path>
+                      )
+                    })}
+                  </svg>
 
-                        <div className="mt-2 text-[0.66rem] tracking-wide text-[#8a6f3c]">{p.ganShen}</div>
+                  <div className={`grid grid-cols-2 gap-2.5 ${chart.data.pillars.length === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+                    {chart.data.pillars.map((p, i) => (
+                      <Reveal key={p.key} delay={i * 0.09}>
+                        <div className="group relative border border-white/8 bg-[#0a0a12]/70 p-3 text-center transition-colors hover:border-[rgba(216,176,106,0.32)]">
+                          <div className="flex items-center justify-between text-[0.6rem] tracking-[0.16em] text-[#6f6c7d]">
+                            <span>{p.label}</span>
+                            <span style={{ color: WUXING_COLOR[p.ganWuXing] }}>{p.ganWuXing}</span>
+                          </div>
 
-                        <div className="mt-1.5 flex items-center justify-center gap-1">
-                          <span className="serif text-[2.05rem] leading-none" style={{ color: WUXING_COLOR[p.ganWuXing], textShadow: `0 0 22px ${WUXING_COLOR[p.ganWuXing]}55` }}>
-                            {p.gan}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex items-center justify-center gap-1">
-                          <span className="serif text-[2.05rem] leading-none" style={{ color: WUXING_COLOR[p.zhiWuXing], textShadow: `0 0 22px ${WUXING_COLOR[p.zhiWuXing]}55` }}>
-                            {p.zhi}
-                          </span>
-                        </div>
+                          <div className="mt-2 text-[0.66rem] tracking-wide text-[#8a6f3c]"><Term k={p.ganShen}>{p.ganShen}</Term></div>
 
-                        <div className="mt-2.5 space-y-0.5 border-t border-white/6 pt-2">
-                          {p.hidden.map((h) => (
-                            <div key={h.gan} className="flex items-center justify-between text-[0.6rem]">
-                              <span style={{ color: WUXING_COLOR[h.wuxing] }}>{h.gan}</span>
-                              <span className="text-[#6f6c7d]">{h.shen}</span>
-                            </div>
-                          ))}
-                        </div>
+                          <div className="mt-1.5 flex items-center justify-center gap-1">
+                            <span className="serif text-[2.05rem] leading-none" style={{ color: WUXING_COLOR[p.ganWuXing], textShadow: `0 0 22px ${WUXING_COLOR[p.ganWuXing]}55` }}>
+                              {p.gan}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex items-center justify-center gap-1">
+                            <span className="serif text-[2.05rem] leading-none" style={{ color: WUXING_COLOR[p.zhiWuXing], textShadow: `0 0 22px ${WUXING_COLOR[p.zhiWuXing]}55` }}>
+                              {p.zhi}
+                            </span>
+                          </div>
 
-                        <div className="mt-2 text-[0.58rem] text-[#5c5969]">{p.naYin} · {p.diShi}</div>
-                      </div>
-                    </Reveal>
-                  ))}
+                          <div className="mt-2.5 space-y-0.5 border-t border-white/6 pt-2">
+                            {p.hidden.map((h) => (
+                              <div key={h.gan} className="flex items-center justify-between text-[0.6rem]">
+                                <span style={{ color: WUXING_COLOR[h.wuxing] }}>{h.gan}</span>
+                                <span className="text-[#6f6c7d]">{h.shen}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="mt-2 flex items-center justify-center gap-1 text-[0.58rem] text-[#5c5969]"><Term k="纳音">{p.naYin}</Term><span>·</span><Term k={p.diShi}>{p.diShi}</Term></div>
+                        </div>
+                      </Reveal>
+                    ))}
+                  </div>
+
+                  {/* 地支弧线 */}
+                  <svg
+                    className="absolute inset-x-0 -bottom-[66px] hidden h-[66px] w-full sm:block"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    {groupRels(chart.data.relations.zhi).map((g, i) => {
+                      const n = chart.data.pillars.length
+                      const ia = chart.data.pillars.findIndex((p) => g.a.startsWith(p.label))
+                      const ib = chart.data.pillars.findIndex((p) => g.b.startsWith(p.label))
+                      if (ia < 0 || ib < 0) return null
+                      const x1 = ((ia + 0.5) / n) * 100
+                      const x2 = ((ib + 0.5) / n) * 100
+                      const h = 40 + (i % 3) * 22
+                      return (
+                        <path
+                          key={`z${i}`}
+                          d={`M ${x1} 0 Q ${(x1 + x2) / 2} ${h} ${x2} 0`}
+                          fill="none"
+                          stroke={g.color}
+                          strokeWidth={g.kinds.includes('冲') ? 2 : 1.5}
+                          strokeDasharray={g.dashed ? '5 4' : undefined}
+                          vectorEffect="non-scaling-stroke"
+                          opacity={0.95}
+                        >
+                          <title>{g.labels.join('；')}</title>
+                        </path>
+                      )
+                    })}
+                  </svg>
                 </div>
+
+                {/* 关系图例与文字 */}
+                {(chart.data.relations.gan.length > 0 || chart.data.relations.zhi.length > 0 || chart.data.relations.combos.length > 0) && (
+                  <div className="-mt-2 mb-4 border-t border-white/6 pt-3">
+                    <div className="mb-2 flex flex-wrap items-center gap-3 text-[0.56rem] text-[#6f6c7d]">
+                      <span className="flex items-center gap-1"><span className="h-[2px] w-4 bg-[#d8b06a]" />合</span>
+                      <span className="flex items-center gap-1"><span className="h-[2px] w-4 bg-[#c0392b]" />冲</span>
+                      <span className="flex items-center gap-1"><span className="h-0 w-4 border-t border-dashed border-[#b8473a]" />刑 / 害</span>
+                      <span className="ml-auto text-[#5c5969]">悬停弧线看关系</span>
+                    </div>
+                    <div className="space-y-1">
+                      {chart.data.relations.gan.map((r, i) => (
+                        <div key={`gl${i}`} className="text-[0.66rem] leading-relaxed text-[#a9a6b8]">
+                          <span style={{ color: r.color }}>{r.kind}</span> · {r.label}
+                        </div>
+                      ))}
+                      {chart.data.relations.zhi.map((r, i) => (
+                        <div key={`zl${i}`} className="text-[0.66rem] leading-relaxed text-[#a9a6b8]">
+                          <span style={{ color: r.color }}>{r.kind}</span> · {r.label}
+                        </div>
+                      ))}
+                      {chart.data.relations.combos.map((r, i) => (
+                        <div key={`cl${i}`} className="text-[0.66rem] leading-relaxed text-[#c9b28a]">
+                          {r.kind} · {r.label}（{r.members.join('、')}）
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* 五行 */}
                 <div className="mt-5">
@@ -306,7 +420,7 @@ export default function BaziPage() {
                           }}
                           title={s.note}
                         >
-                          {s.name} <span className="opacity-60">{s.where}</span>
+                          <Term k={s.name}>{s.name}</Term> <span className="opacity-60">{s.where}</span>
                         </span>
                       ))}
                     </div>
