@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Starfield from './components/Starfield'
 import LlmSettings from './components/LlmSettings'
+import OnboardingGuide from './components/OnboardingGuide'
 import { useUi, routeFromHash, type RouteKey } from './lib/uiStore'
 import { isConfigured, useLlm } from './lib/llm'
 import Home from './pages/Home'
@@ -40,6 +41,8 @@ const NAV: { key: RouteKey; label: string; sub: string }[] = [
 export default function App() {
   const { route, goto, settingsOpen, openSettings, closeSettings } = useUi()
   const cfg = useLlm()
+  const onboarded = useLlm((s) => s.onboarded)
+  const setOnboarded = useLlm((s) => s.setOnboarded)
 
   useEffect(() => {
     useUi.setState({ route: routeFromHash() })
@@ -87,14 +90,19 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-2.5">
-            <button onClick={openSettings} className="group flex items-center gap-2 border border-white/10 px-2.5 py-1.5 transition hover:border-[rgba(216,176,106,0.4)]">
+            <button
+              onClick={openSettings}
+              title={ready ? '切换模型或配置档案 · 本机私有' : '接入你自己的模型'}
+              className="group flex items-center gap-2 border border-white/10 px-2.5 py-1.5 transition hover:border-[rgba(216,176,106,0.4)]"
+            >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${ready ? 'bg-[#4ea87a]' : 'bg-[#b8473a]'}`}
                 style={{ boxShadow: ready ? '0 0 8px #4ea87a' : '0 0 8px #b8473a' }}
               />
-              <span className="text-[0.68rem] tracking-wide text-[#a9a6b8] group-hover:text-[#f2dcae]">
-                {ready ? cfg.model.slice(0, 16) : '接入模型'}
+              <span className="max-w-[92px] truncate text-[0.68rem] tracking-wide text-[#a9a6b8] group-hover:text-[#f2dcae] sm:max-w-none">
+                {ready ? cfg.model : '我的模型'}
               </span>
+              <span className="hidden text-[0.52rem] tracking-wider text-[#5c5969] sm:inline">本机</span>
             </button>
           </div>
         </div>
@@ -155,6 +163,18 @@ export default function App() {
       </footer>
 
       <LlmSettings open={settingsOpen} onClose={closeSettings} />
+
+      <AnimatePresence>
+        {!onboarded && (
+          <OnboardingGuide
+            onConfigure={() => {
+              setOnboarded(true)
+              window.setTimeout(openSettings, 240)
+            }}
+            onSkip={() => setOnboarded(true)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

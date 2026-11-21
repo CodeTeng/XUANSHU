@@ -15,6 +15,21 @@ export interface LlmConfig {
   maxTokens: number
 }
 
+/** 一套可保存的模型配置。存在本人的浏览器里，可多套并存、随时切换。 */
+export interface LlmProfile extends LlmConfig {
+  id: string
+  name: string
+  savedAt: number
+}
+
+/** 本机用量账本：只记这台设备发出的请求，不上报 */
+export interface UsageStat {
+  calls: number
+  promptChars: number
+  completionChars: number
+  lastAt: number
+}
+
 export const PRESETS: { id: string; name: string; baseUrl: string; models: string[]; note: string }[] = [
   { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', models: ['deepseek-chat', 'deepseek-reasoner'], note: '性价比高，中文典籍理解好' },
   { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1'], note: '需海外网络环境' },
@@ -25,8 +40,18 @@ export const PRESETS: { id: string; name: string; baseUrl: string; models: strin
 ]
 
 interface LlmStore extends LlmConfig {
+  profiles: LlmProfile[]
+  usage: UsageStat
+  /** 是否已看过首次引导 */
+  onboarded: boolean
   set: (patch: Partial<LlmConfig>) => void
   reset: () => void
+  saveProfile: (name: string) => string
+  applyProfile: (id: string) => void
+  deleteProfile: (id: string) => void
+  recordUsage: (promptChars: number, completionChars: number) => void
+  setOnboarded: (v: boolean) => void
+  clearAll: () => void
 }
 
 const DEFAULT: LlmConfig = {
@@ -37,14 +62,61 @@ const DEFAULT: LlmConfig = {
   maxTokens: 2400,
 }
 
+const EMPTY_USAGE: UsageStat = { calls: 0, promptChars: 0, completionChars: 0, lastAt: 0 }
+
 export const useLlm = create<LlmStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...DEFAULT,
+      profiles: [],
+      usage: EMPTY_USAGE,
+      onboarded: false,
       set: (patch) => set(patch),
       reset: () => set(DEFAULT),
+      saveProfile: (name) => {
+        const s = get()
+        const id = `p${Date.now().toString(36)}`
+        const profile: LlmProfile = {
+          id,
+          name: name.trim() || s.model || '未命名配置',
+          baseUrl: s.baseUrl,
+          apiKey: s.apiKey,
+          model: s.model,
+          temperature: s.temperature,
+          maxTokens: s.maxTokens,
+          savedAt: Date.now(),
+        }
+        // 同名则覆盖，避免越存越多
+        const rest = s.profiles.filter((p) => p.name !== profile.name)
+        set({ profiles: [...rest, profile] })
+        return id
+      },
+      applyProfile: (id) => {
+        const p = get().profiles.find((x) => x.id === id)
+        if (!p) return
+        set({
+          baseUrl: p.baseUrl,
+          apiKey: p.apiKey,
+          model: p.model,
+          temperature: p.temperature,
+          maxTokens: p.maxTokens,
+        })
+      },
+      deleteProfile: (id) => set({ profiles: get().profiles.filter((p) => p.id !== id) }),
+      recordUsage: (promptChars, completionChars) =>
+        set({
+          usage: {
+            calls: get().usage.calls + 1,
+            promptChars: get().usage.promptChars + promptChars,
+            completionChars: get().usage.completionChars + completionChars,
+            lastAt: Date.now(),
+          },
+        }),
+      setOnboarded: (v) => set({ onboarded: v }),
+      clearAll: () =>
+        set({ ...DEFAULT, profiles: [], usage: EMPTY_USAGE }),
     }),
-    { name: 'xuanshu.llm.v1' },
+    { name: 'xuanshu.llm.v1', version: 2 },
   ),
 )
 
@@ -118,23 +190,50 @@ async function consumeSse(r: Response, onDelta: (t: string) => void): Promise<st
   return full
 }
 
-/** 主入口：优先走本地代理，失败则回退直连 */
+/** 主入口：优先走本地代理，失败则回退直连。同时把用量记进本机账本 */
 export async function streamChat(
   cfg: LlmConfig,
   messages: ChatMessage[],
   onDelta: (t: string) => void,
   signal: AbortSignal,
 ): Promise<string> {
-  let proxyOk = false
-  try {
-    const h = await fetch('/api/health', { signal: AbortSignal.timeout(2500) })
-    proxyOk = h.ok && (await h.json()).proxy === true
-  } catch {
-    proxyOk = false
+  const promptChars = messages.reduce((n, m) => n + m.content.length, 0)
+  let produced = 0
+  const track = (t: string) => {
+    produced += t.length
+    onDelta(t)
   }
 
-  if (!proxyOk) return directStream(cfg, messages, onDelta, signal)
+  try {
+    let out: string
+    let proxyOk = false
+    try {
+      const h = await fetch('/api/health', { signal: AbortSignal.timeout(2500) })
+      proxyOk = h.ok && (await h.json()).proxy === true
+    } catch {
+      proxyOk = false
+    }
 
+    if (!proxyOk) {
+      out = await directStream(cfg, messages, track, signal)
+    } else {
+      out = await viaProxy(cfg, messages, track, signal)
+    }
+    useLlm.getState().recordUsage(promptChars, produced || out.length)
+    return out
+  } catch (e) {
+    // 中途停止时上游已经计费的 token 也算数，不装作没发生
+    if (produced > 0) useLlm.getState().recordUsage(promptChars, produced)
+    throw e
+  }
+}
+
+async function viaProxy(
+  cfg: LlmConfig,
+  messages: ChatMessage[],
+  onDelta: (t: string) => void,
+  signal: AbortSignal,
+): Promise<string> {
   const r = await fetch('/api/llm', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
