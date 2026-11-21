@@ -70,6 +70,36 @@ function hashString(s: string): number {
 
 const TF_CODE: Record<string, number> = { dawn: 3, morning: 5, noon: 7, afternoon: 11, dusk: 13, night: 17, midnight: 19 }
 
+/** tarot-skill/references/combinations.md 的经典组合（「高塔」在本站牌库中名为「塔」） */
+const CLASSIC_COMBOS: { pair: [string, string]; text: string }[] = [
+  { pair: ['死神', '星星'], text: '结束之后的疗愈' },
+  { pair: ['塔', '星星'], text: '崩塌后重建' },
+  { pair: ['死神', '审判'], text: '方向重估' },
+  { pair: ['月亮', '太阳'], text: '幻象被照亮' },
+  { pair: ['恶魔', '力量'], text: '驯化阴影' },
+  { pair: ['女祭司', '魔术师'], text: '直觉与行动校时' },
+  { pair: ['隐士', '恋人'], text: '独处影响连接' },
+  { pair: ['皇帝', '命运之轮'], text: '控制被变化测试' },
+  { pair: ['正义', '命运之轮'], text: '选择遇到时机回响' },
+  { pair: ['塔', '宝剑十'], text: '旧结构彻底结束' },
+]
+
+/** A3 牌性：元素之间的互助与相克 */
+function elementRelation(a: TarotCard, b: TarotCard): string | null {
+  const pair = new Set([a.element, b.element])
+  if (pair.size === 1) return null
+  const key = [a.element, b.element].sort().join('')
+  const table: Record<string, string> = {
+    火风: '火借风势，两张牌在互相加速',
+    土水: '水润土、土蓄水，是互相滋养的一组',
+    火水: '火水相激，容易一端过热一端过冷',
+    风土: '风土相持，想法落不到实处',
+    火土: '火生土，需要一次落地才能兑现',
+    水风: '水风交缠，容易想得多、感受也重',
+  }
+  return table[key] ?? null
+}
+
 export function draw(opts: {
   spreadKey: string
   question: string
@@ -104,10 +134,24 @@ export function draw(opts: {
   }
   const suitEntries = Object.entries(suits) as [Suit, number][]
   const dominant = suitEntries.find(([, n]) => n >= 3)?.[0] ?? null
-  const missing = suitEntries.length && drawn.length >= 3 ? suitEntries.find(([, n]) => n === 0 && n !== undefined)?.[0] ?? null : null
+  const missing = drawn.length >= 3 ? suitEntries.find(([, n]) => n === 0)?.[0] ?? null : null
   const majorRatio = drawn.length ? major / drawn.length : 0
 
   const relations: string[] = []
+
+  // 1) 经典组合优先，命中就单独列出
+  for (let i = 0; i < drawn.length; i++) {
+    for (let j = i + 1; j < drawn.length; j++) {
+      const a = drawn[i].card.name
+      const b = drawn[j].card.name
+      const hit = CLASSIC_COMBOS.find(
+        (c) => (c.pair[0] === a && c.pair[1] === b) || (c.pair[0] === b && c.pair[1] === a),
+      )
+      if (hit) relations.push(`经典组合：${a} + ${b} —— ${hit.text}`)
+    }
+  }
+
+  // 2) 相邻牌推进
   for (let i = 1; i < drawn.length; i++) {
     const a = drawn[i - 1].card
     const b = drawn[i].card
@@ -117,8 +161,36 @@ export function draw(opts: {
     else if (a.arcana === 'major' && b.arcana === 'major') kind = '因果'
     const aRev = drawn[i - 1].reversed ? '逆' : '正'
     const bRev = drawn[i].reversed ? '逆' : '正'
-    relations.push(`${a.name}(${aRev}) → ${b.name}(${bRev})：${kind}，${relationText(kind, a, b)}`)
+    const elem = elementRelation(a, b)
+    relations.push(
+      `${a.name}(${aRev}) → ${b.name}(${bRev})：${kind}，${relationText(kind, a, b)}${elem ? `；${elem}` : ''}`,
+    )
   }
+
+  // 3) 大牌镜像：编号和 21
+  const majors = drawn.filter((d) => d.card.arcana === 'major')
+  for (let i = 0; i < majors.length; i++) {
+    for (let j = i + 1; j < majors.length; j++) {
+      const n1 = Number(majors[i].card.id.split('-')[1])
+      const n2 = Number(majors[j].card.id.split('-')[1])
+      if (n1 + n2 === 21) {
+        relations.push(`${majors[i].card.name}（${n1}）与${majors[j].card.name}（${n2}）编号和为 21，互为镜像张力`)
+      }
+    }
+  }
+
+  // 4) 同数字跨花色共振
+  const byRank: Record<number, TarotCard[]> = {}
+  for (const d of drawn) {
+    if (d.card.arcana === 'minor' && d.card.rank) (byRank[d.card.rank] ||= []).push(d.card)
+  }
+  for (const [rank, cards] of Object.entries(byRank)) {
+    const suitsIn = new Set(cards.map((c) => c.suit))
+    if (suitsIn.size >= 2) {
+      relations.push(`数字 ${rank} 同时出现在${cards.map((c) => c.name).join('、')}，说明这个阶段在不同领域同步发生`)
+    }
+  }
+
   if (dominant) relations.push(`主导元素为${SUIT_META[dominant].name}（${SUIT_META[dominant].theme}），整盘能量偏向这一侧`)
   if (missing) relations.push(`缺席${SUIT_META[missing].name}（${SUIT_META[missing].theme}）：这块可能被整体忽略了`)
   if (majorRatio > 0.5) relations.push('大阿卡纳过半，属于重大转折议题，不是日常小事')

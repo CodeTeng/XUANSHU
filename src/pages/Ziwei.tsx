@@ -74,6 +74,24 @@ export default function ZiweiPage() {
     return chart.data.palaces.find((p) => p.earthlyBranch === BRANCH_ORDER[idx]) ?? null
   }
 
+  /** 命宫三方四正：命、财帛、官禄、迁移 */
+  const sanFang = useMemo(() => {
+    if (!chart.ok) return null
+    const names = ['命宫', '财帛', '官禄', '迁移']
+    return names
+      .map((n) => chart.data.palaces.find((p) => p.name === n))
+      .filter(Boolean)
+      .map((p) => ({
+        name: p!.name,
+        branch: p!.earthlyBranch,
+        stars: p!.majorStars.length
+          ? p!.majorStars.map((s) => `${s.name}${s.brightness ? `(${s.brightness})` : ''}`).join('、')
+          : `空宫·借${oppositeOf(p!.earthlyBranch)?.majorStars.map((s) => s.name).join('、') ?? '对宫'}`,
+        good: p!.minorStars.some((s) => ['左辅', '右弼', '天魁', '天钺', '文昌', '文曲', '禄存', '天马'].includes(s.name)),
+        bad: p!.minorStars.some((s) => ['擎羊', '陀罗', '火星', '铃星', '地空', '地劫'].includes(s.name)),
+      }))
+  }, [chart])
+
   return (
     <div>
       <div className="mb-8">
@@ -286,6 +304,30 @@ export default function ZiweiPage() {
                     </div>
                   </div>
                 </motion.div>
+              )}
+
+              {sanFang && (
+                <div className="mt-4 border-t border-white/6 pt-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="mono text-[0.58rem] tracking-[0.22em] text-[#6f6c7d]">命宫三方四正</span>
+                    <span className="text-[0.54rem] text-[#5c5969]">命 · 财帛 · 官禄 · 迁移</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                    {sanFang.map((p) => (
+                      <div key={p.name} className="border border-white/7 bg-white/[0.012] px-2 py-1.5">
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-[0.58rem] text-[#8a7a5a]">{p.name}</span>
+                          <span className="mono text-[0.52rem] text-[#5c5969]">{p.branch}</span>
+                        </div>
+                        <div className="mt-1 text-[0.64rem] leading-tight text-[#cfcbdb]">{p.stars}</div>
+                        <div className="mt-1 flex gap-1.5">
+                          {p.good && <span className="text-[0.48rem] text-[#8ec9a8]">吉星加会</span>}
+                          {p.bad && <span className="text-[0.48rem] text-[#c08a82]">煞星同宫</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}
