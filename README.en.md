@@ -39,10 +39,10 @@ Switching models never changes the chart. If it disagrees with mainstream softwa
 |---|---|---|---|
 | 🀄 **Four Pillars** | Stems · Ten Gods · hidden stems · Five Elements · shensha · luck cycles · annual | lunar-javascript | Pillars flip open; clash/combine arcs between columns |
 | ✨ **Zi Wei Dou Shu** | 12 palaces · major/minor stars · brightness · four transformations · decadal · trine | iztro (Sanhe school) | Palaces radiate outward; click to inspect |
-| 🧿 **Qi Men Dun Jia** | Yin/Yang dun · nine palaces · stars/gates/gods/stems · chief · void · patterns | ported from `qimen_cli.py` | Nine palaces fly in along the Luoshu path |
+| 🧿 **Qi Men Dun Jia** | Yin/Yang dun · nine palaces · stars/gates/gods/stems · chief · void · patterns | traditional rule set, rewritten | Nine palaces fly in along the Luoshu path |
 | 🃏 **Tarot** | 5 spreads · 78 cards · reversals · classic combos · reproducible draw | own deck + mulberry32 | Shuffle scatter, 3D flip, rotating sigil |
 | 💞 **Marriage** | Bazi matching · zodiac · spouse palace · oracle sticks · peach blossom · red thread | 100 sticks + matching rules | Red thread draw-on; vertical poem |
-| 🏔 **Feng Shui** | Flying stars · Eight Mansions · date selection | ported from `kanyu/` | Clickable 24-mountain compass; nine-palace grid |
+| 🏔 **Feng Shui** | Flying stars · Eight Mansions · date selection | traditional rule set, rewritten | Clickable 24-mountain compass; nine-palace grid |
 
 ## 🚀 Quick start
 
@@ -78,6 +78,22 @@ Open **Connect model** at the top right:
 
 > On a pure static host (no Node service), requests go directly from the browser and the endpoint must allow CORS.
 
+## 👥 Multiple users · bring your own model
+
+This site is BYO-model by design. There is no scenario where the site owner pays for everyone's tokens:
+
+| Who | Whose key | Whose quota |
+|---|---|---|
+| Visitor A | A's own | A's own |
+| Visitor B | B's own | B's own |
+| You (the host) | The one in **your own browser** | Yours |
+
+Technically: the config lives only in the browser's `localStorage` (key `xuanshu.llm.v1`) and never enters any server-side store. The Node service only forwards the request — nothing written to disk, nothing logged. Send the URL to a hundred people and you still pay for zero of their characters.
+
+There is also a **local usage ledger**: it counts how many calls this device made and how many characters went in and out. Local only, never reported.
+
+One person can keep several profiles (say "daily · cheap" and "deep dive · expensive") and switch with one click.
+
 ## 📐 Conventions
 
 | Item | Rule |
@@ -96,7 +112,7 @@ Where schools disagree, the UI says so. No pretending there is one answer.
 
 ## 🔬 Method & sources
 
-Every class of conclusion carries an evidence level, following the scheme from `fengshui.skill`:
+Every class of conclusion carries an evidence level, using a four-tier scheme:
 
 | Mark | Meaning |
 |---|---|
@@ -105,7 +121,7 @@ Every class of conclusion carries an evidence level, following the scheme from `
 | 📖 | Attribution accepted, original not obtained |
 | ⚖️ | School-specific convention / a judgement, not settled |
 
-On the Bazi chart, **Ten Gods, na-yin, twelve stages and shensha** are all clickable — 40+ entries with plain-language gloss and citation, ported from `kanyu/glossary.py`.
+On the Bazi chart, **Ten Gods, na-yin, twelve stages and shensha** are all clickable — 40+ entries with plain-language gloss, citation and verification status.
 
 ## 🧪 Tests
 
