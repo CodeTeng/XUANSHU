@@ -1,104 +1,172 @@
-# 玄枢 XUANSHU
+<div align="center">
 
-中国传统术数的可视化推演站。四柱、紫微、奇门、塔罗、姻缘、堪舆六门，排盘由确定性算法完成，解读交给你自己接入的大模型。
+# 玄枢 · XUANSHU
+
+**中国传统术数的可视化推演站**
+
+排盘由确定性算法完成，解读交给你自己接入的大模型
+
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white&style=flat-square)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white&style=flat-square)](https://vitejs.dev)
+[![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-38BDF8?logo=tailwindcss&logoColor=white&style=flat-square)](https://tailwindcss.com)
+[![License](https://img.shields.io/badge/License-MIT-D4AF6A?style=flat-square)](#-许可)
+
+[简体中文](README.md) · [English](README.en.md)
+
+</div>
+
+---
 
 > 盘是算出来的，话是问出来的。
 
-## 为什么这样拆
+## 🧭 为什么这样拆
 
-大模型很会说话，但不擅长排盘。历法换算、定局起盘、安星布门这些地方，「看起来对」的错误最难被发现。所以这个站把两件事分开：
+大模型很会说话，但不擅长排盘。历法换算、定局起盘、安星布门这些地方，「看起来对」的错误最难被发现。
 
-- **算法层**：四柱、九局、十二宫、飞星、抽牌、求签，全部由代码算出。同一次输入永远得到同一结果，可以与通行排盘软件逐条对照。
-- **解读层**：模型只读算法给的盘面事实，负责翻译成人话。换模型不会改变盘面。
+所以这个站把两件事分开：
 
-## 功能
-
-| 门 | 子模式 | 排盘内核 |
+| | 谁来做 | 结果 |
 |---|---|---|
-| 四柱八字 | 四柱 / 十神 / 藏干 / 五行 / 神煞 / 大运 / 流年 | lunar-javascript |
-| 紫微斗数 | 十二宫 / 主星辅星 / 庙旺 / 生年四化 / 大限 | iztro（三合派） |
-| 奇门遁甲 | 阴阳遁定局 / 九宫 / 九星八门八神 / 值符值使 / 空亡驿马 / 格局 | 移植 qimen_cli.py |
-| 塔罗 | 5 种牌阵 / 78 张牌 / 正逆位 / 牌间关系 / 可复现抽牌 | 自建牌库 + mulberry32 |
-| 姻缘 | 八字合婚 / 生肖配对 / 夫妻宫 / 求签 / 桃花 / 红线 | 100 支签 + 合婚规则 |
-| 堪舆 | 玄空飞星 / 八宅命卦 / 择日 | 移植 kanyu/ + 黄历 |
+| **排盘** | 算法 | 同一次输入永远得到同一个盘，可逐条核对 |
+| **解读** | 你接入的模型 | 只把盘面符号翻译成人话，不参与推演 |
 
-## 快速开始
+换模型不会改变盘面。对不上通行排盘软件，就是 bug，不是「流派不同」。
+
+## 🎴 六门 · 十七种问法
+
+| 门 | 子模式 | 排盘内核 | 视觉 |
+|---|---|---|---|
+| 🀄 **四柱八字** | 四柱 · 十神 · 藏干 · 五行 · 神煞 · 大运 · 流年 | lunar-javascript | 四柱翻开、五行生长、柱间合冲刑害弧线 |
+| ✨ **紫微斗数** | 十二宫 · 主星辅星 · 庙旺 · 生年四化 · 大限 · 三方四正 | iztro（三合派） | 十二宫放射入场、点击看星曜 |
+| 🧿 **奇门遁甲** | 阴阳遁定局 · 九宫 · 星门神仪 · 值符值使 · 空亡驿马 · 格局 | 移植 `qimen_cli.py` | 九宫按洛书轨迹逐宫飞布 |
+| 🃏 **塔罗** | 5 种牌阵 · 78 张牌 · 正逆位 · 经典组合 · 可复现抽牌 | 自建牌库 + mulberry32 | 洗牌散开、3D 翻牌、旋转魔法阵 |
+| 💞 **姻缘** | 八字合婚 · 生肖配对 · 夫妻宫 · 求签 · 桃花 · 红线 | 100 支签 + 合婚规则 | 红线生长、签诗竖排 |
+| 🏔 **堪舆** | 玄空飞星 · 八宅命卦 · 择日 | 移植 `kanyu/` | 可点击二十四山罗盘、九宫飞星 |
+
+## 🚀 快速开始
 
 ```bash
 npm install
 
-# 开发（Vite 5173 + 代理服务 8787）
+# 开发：一键起 Vite(5173) + 代理服务(8787)
 npm run dev
-npm run serve        # 另开一个终端，提供 /api/llm 代理
 
 # 生产
 npm run build
-npm start            # 构建并起服务，默认 http://127.0.0.1:8787
+npm start          # → http://127.0.0.1:8787
 ```
 
-`npm run serve` 只做两件事：托管 `dist/`，以及把浏览器请求转发到你填的模型端点（绕过 CORS）。密钥只在单次请求的内存里过一遍，不落盘、不写日志。
+需要 Node 20+。`npm run serve` 只做两件事：托管 `dist/`，把浏览器请求转发到你填的模型端点（绕过 CORS）。密钥只在单次请求的内存里过一遍，不落盘、不写日志。
 
-## 接入模型
+## 🔑 接入模型
 
-右上角「接入模型」打开配置面板：
+右上角 **接入模型** 打开配置面板：
 
-- **接口地址**：任何 OpenAI 兼容端点，需以 `/v1` 结尾，站内会拼接 `/chat/completions`
-- **API Key**：只写入本浏览器 localStorage
-- **模型**：可手填，也可点「测试连接」拉取可用列表
+- **接口地址** — 任何 OpenAI 兼容端点，需以 `/v1` 结尾（站内会拼接 `/chat/completions`）
+- **API Key** — 只写入本浏览器 localStorage
+- **模型** — 可手填，也可点「测试连接」拉取可用列表
 
-内置 DeepSeek / OpenAI / Moonshot / 智谱 / SiliconFlow / Ollama 预设。本地 Ollama 不需要 Key。
-
-> 若部署在纯静态环境（无 Node 服务），请求会由浏览器直连端点，需要端点允许跨域。
-
-## 排盘口径与出处
-
-本项目的算法与知识分别来自五个开源 skill 仓库，处理方式如下：
-
-| 来源 | 用途 | 处理 |
+| 预设 | 端点 | 备注 |
 |---|---|---|
-| `jinchenma94/bazi-skill` | 四柱、十神、神煞、大运规则 | 排盘改用 lunar-javascript（与 lunar-python 同作者同源），1990-05-15 12:00 例与 `pai_pan.py` 输出逐字一致 |
-| `FANzR-arch/Numerologist_skills` | 奇门、紫微 | 奇门逐行移植 `qimen_cli.py`（含中五寄坤、值符加时干、值使移宫）；紫微用 iztro，命宫/夫妻宫位置与 `ziwei_cli.py` 人工核对一致 |
-| `Ming-H/yinyuan-skills` | 姻缘六模式 | 100 支签诗从 `fortune-sticks.md` 提取为 JSON；六合/三合/六冲/六害/三刑、桃花位、合婚规则照 `references/` 实现 |
-| `voidforall/fengshui.skill` | 玄空飞星、八宅、择日 | 移植 `kanyu/feixing.py`、`bazhai.py`、`core.py`；择日简化为建除 + 黄历宜忌 + 冲当事人 |
-| `daman-ovo-0404/tarot-skill` | 塔罗纪律 | 抽牌纪律（脚本抽牌、展示 seed/time_factor、可复现）与花色数字体系照 `cards.md`；78 张牌义与 SVG 牌面自建 |
+| DeepSeek | `https://api.deepseek.com/v1` | 性价比高，中文典籍理解好 |
+| OpenAI | `https://api.openai.com/v1` | 需海外网络 |
+| Moonshot | `https://api.moonshot.cn/v1` | 长文本 |
+| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | 国内直连 |
+| SiliconFlow | `https://api.siliconflow.cn/v1` | 聚合多模型 |
+| Ollama | `http://127.0.0.1:11434/v1` | 本地推理，无需 Key |
 
-口径声明：
+> 纯静态环境（无 Node 服务）下，请求由浏览器直连端点，需要端点允许跨域。
 
-- 年柱以立春为界，月柱以节为界，子时默认 23:00 换日
-- 奇门为时家转盘奇门，中五一律寄坤
-- 紫微走三合派，命宫由生月逆数生时定，五行局起大限
-- 玄空飞星按元运论旺衰，兼向超过 3° 建议并参替卦
-- 有分歧处（早晚子时、兼向度数、流派取用）在界面上标注，不假装唯一答案
+## 📐 排盘口径
 
-## 目录
+| 项目 | 口径 |
+|---|---|
+| 年柱 | 以立春为界 |
+| 月柱 | 以节为界（非中气） |
+| 日柱 | 真太阳时；**23:00 起取次日**（夜子时法，与 `pai_pan.py` 一致） |
+| 时柱 | 五鼠遁 |
+| 奇门 | 时家转盘，中五一律寄坤 |
+| 紫微 | 三合派，命宫由生月逆数生时定 |
+| 飞星 | 按元运论旺衰，兼向超过 3° 建议并参替卦 |
+| 塔罗 | 抽牌可复现（seed + time_factor） |
+| 择日 | 建除 + 黄历宜忌 + 冲当事人 + 月破（简化版） |
+
+有分歧处（早晚子时、兼向度数、流派取用）在界面与[方法与出处](#-方法与出处)页里标注，不假装唯一答案。
+
+## 🔬 方法与出处
+
+站内每一类结论都标了依据等级，沿用 `fengshui.skill` 的核对状态体系：
+
+| 标记 | 含义 |
+|---|---|
+| ✅ | 原文已核对（维基文库公有领域本） |
+| 🧮 | 古法规则按原样实现，与独立数据源对照一致 |
+| 📖 | 出处公认，本次未取得原文 |
+| ⚖️ | 流派口径 / 属判断，各派说法不一 |
+
+八字盘上的**十神、纳音、十二长生、神煞**都可以点开看白话释义与出处（40+ 条，移植自 `kanyu/glossary.py`）。
+
+### 算法来源
+
+| 模块 | 引擎 | 来源仓库 |
+|---|---|---|
+| 四柱 | lunar-javascript（6tail，与 lunar-python 同源） | `jinchenma94/bazi-skill` |
+| 紫微 | iztro 2.6 | `FANzR-arch/Numerologist_skills` |
+| 奇门 | 逐行移植 `qimen_cli.py` | `FANzR-arch/Numerologist_skills` |
+| 飞星 / 八宅 | 移植 `kanyu/feixing.py`、`bazhai.py` | `voidforall/fengshui.skill` |
+| 塔罗 | 自建 78 张 + 抽牌纪律 | `daman-ovo-0404/tarot-skill` |
+| 姻缘 | 100 支签诗 + 合婚规则 | `Ming-H/yinyuan-skills` |
+
+## 🧪 测试
+
+13 个快照用例覆盖排盘边界：夜子时、立春交界、时辰不详、阴阳遁、青龙反转、固定 seed 抽牌。
+
+```bash
+npm test           # 比对快照
+npm test -- -u     # 改口径后重新生成，必须 review diff
+npm run verify     # 打印三盘对照输出，人工核对
+npm run mock       # 起假端点，验证流式链路
+```
+
+## 📁 目录
 
 ```
 src/
 ├── lib/
 │   ├── astro/        bazi.ts  ziwei.ts  qimen.ts  fengshui.ts
-│   ├── tarot/        deck.ts（78 张）  draw.ts（抽牌）
-│   ├── love/         match.ts（合婚/桃花/签/红线）
-│   ├── data/sticks.json
-│   ├── llm.ts        OpenAI 兼容客户端 + 流式解析
+│   ├── tarot/        deck.ts（78 张）  draw.ts（抽牌 + 牌间关系）
+│   ├── love/         match.ts（合婚 / 桃花 / 签 / 红线）
+│   ├── data/         sticks.json（100 支签）
+│   ├── llm.ts        OpenAI 兼容客户端 + SSE 流式解析
 │   └── prompts.ts    六套系统提示词（纪律蒸馏自各 SKILL.md）
-├── components/       Starfield  BaguaRing  Compass  MagicCircle
-│                     TarotCardView  ReadingPanel  LlmSettings
-├── pages/            Home  Bazi  Ziwei  Qimen  Tarot  Love  Fengshui
+├── data/glossary.ts  术语白话 + 出处等级（40+ 条）
+├── components/       Starfield · BaguaRing · Compass · MagicCircle
+│                     TarotCardView · ReadingPanel · LlmSettings
+├── pages/            Home · Bazi · Ziwei · Qimen · Tarot · Love
+│                     Fengshui · Method（方法与出处）
 scripts/
-├── verify.ts         排盘自检：三盘对照输出
-├── mock-llm.mjs      假端点，用于本地验证流式链路
+├── test-snapshot.ts  快照测试
+├── verify.ts         排盘自检
+├── mock-llm.mjs      假端点
+└── dev.mjs           同时起前端与代理
 server/index.mjs      静态托管 + /api/llm 代理
 ```
 
-## 边界
+## ⚠️ 边界
 
 - 不保存任何测算记录，刷新即清空
 - 不卖摆件、不做化解商品推荐
-- 不替代医疗、法律、投资建议；涉及健康提示就医，涉及财务提示理性决策
+- 不替代医疗、法律、投资建议
 - 内容为传统文化研究与娱乐参考，不作宿命论断言
+- 塔罗牌面为自绘 SVG，非韦特牌原图
 
-排盘引擎自检：
+## 📄 许可
 
-```bash
-npx tsx scripts/verify.ts
-```
+MIT。术数规则与典籍引文属公有领域；五个来源仓库各自遵循其原许可，详见 [NOTICE.md](NOTICE.md)。
+
+<div align="center">
+
+**玄枢** · 在星图与卦象之间，问一个具体的问题
+
+</div>
