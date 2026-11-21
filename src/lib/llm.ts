@@ -1,0 +1,194 @@
+/**
+ * LLM 接入层。
+ *
+ * 设计前提：用户自带端点（OpenAI 兼容），Key 只存在浏览器 localStorage，
+ * 请求经本地 /api/llm 转发以绕开 CORS，服务端不落盘、不写日志。
+ */
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export interface LlmConfig {
+  baseUrl: string
+  apiKey: string
+  model: string
+  temperature: number
+  maxTokens: number
+}
+
+export const PRESETS: { id: string; name: string; baseUrl: string; models: string[]; note: string }[] = [
+  { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', models: ['deepseek-chat', 'deepseek-reasoner'], note: '性价比高，中文典籍理解好' },
+  { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1'], note: '需海外网络环境' },
+  { id: 'moonshot', name: 'Moonshot', baseUrl: 'https://api.moonshot.cn/v1', models: ['moonshot-v1-8k', 'kimi-latest'], note: '长文本，中文稳' },
+  { id: 'zhipu', name: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-4-plus', 'glm-4-flash'], note: '国内直连' },
+  { id: 'siliconflow', name: 'SiliconFlow', baseUrl: 'https://api.siliconflow.cn/v1', models: ['deepseek-ai/DeepSeek-V3', 'Qwen/Qwen2.5-72B-Instruct'], note: '聚合多模型' },
+  { id: 'ollama', name: 'Ollama（本地）', baseUrl: 'http://127.0.0.1:11434/v1', models: ['qwen2.5:14b', 'llama3.1:8b'], note: '无需 Key，本机推理' },
+]
+
+interface LlmStore extends LlmConfig {
+  set: (patch: Partial<LlmConfig>) => void
+  reset: () => void
+}
+
+const DEFAULT: LlmConfig = {
+  baseUrl: 'https://api.deepseek.com/v1',
+  apiKey: '',
+  model: 'deepseek-chat',
+  temperature: 0.8,
+  maxTokens: 2400,
+}
+
+export const useLlm = create<LlmStore>()(
+  persist(
+    (set) => ({
+      ...DEFAULT,
+      set: (patch) => set(patch),
+      reset: () => set(DEFAULT),
+    }),
+    { name: 'xuanshu.llm.v1' },
+  ),
+)
+
+export function isConfigured(c: LlmConfig) {
+  return Boolean(c.baseUrl && c.model && (c.apiKey || /localhost|127\.0\.0\.1/.test(c.baseUrl)))
+}
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+export class LlmError extends Error {
+  status?: number
+  constructor(message: string, status?: number) {
+    super(message)
+    this.status = status
+  }
+}
+
+/** 直接打端点（当没有本地代理时用；需要端点允许 CORS） */
+async function directStream(
+  cfg: LlmConfig,
+  messages: ChatMessage[],
+  onDelta: (t: string) => void,
+  signal: AbortSignal,
+): Promise<string> {
+  const r = await fetch(`${cfg.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}) },
+    body: JSON.stringify({
+      model: cfg.model, messages, stream: true,
+      temperature: cfg.temperature, max_tokens: cfg.maxTokens,
+    }),
+    signal,
+  })
+  if (!r.ok) throw new LlmError(await r.text(), r.status)
+  return consumeSse(r, onDelta)
+}
+
+async function consumeSse(r: Response, onDelta: (t: string) => void): Promise<string> {
+  const reader = r.body!.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  let full = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop() || ''
+    for (const raw of lines) {
+      const line = raw.trim()
+      if (!line || !line.startsWith('data:')) continue
+      const payload = line.slice(5).trim()
+      if (payload === '[DONE]') return full
+      try {
+        const j = JSON.parse(payload)
+        const delta = j.choices?.[0]?.delta?.content ?? j.choices?.[0]?.message?.content ?? ''
+        const reasoning = j.choices?.[0]?.delta?.reasoning_content ?? ''
+        if (reasoning) onDelta('') // 思维链不展示，避免正文错乱
+        if (delta) {
+          full += delta
+          onDelta(delta)
+        }
+      } catch {
+        /* 单行解析失败不影响后续 */
+      }
+    }
+  }
+  return full
+}
+
+/** 主入口：优先走本地代理，失败则回退直连 */
+export async function streamChat(
+  cfg: LlmConfig,
+  messages: ChatMessage[],
+  onDelta: (t: string) => void,
+  signal: AbortSignal,
+): Promise<string> {
+  let proxyOk = false
+  try {
+    const h = await fetch('/api/health', { signal: AbortSignal.timeout(2500) })
+    proxyOk = h.ok && (await h.json()).proxy === true
+  } catch {
+    proxyOk = false
+  }
+
+  if (!proxyOk) return directStream(cfg, messages, onDelta, signal)
+
+  const r = await fetch('/api/llm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      baseUrl: cfg.baseUrl, apiKey: cfg.apiKey, model: cfg.model,
+      messages, temperature: cfg.temperature, maxTokens: cfg.maxTokens, stream: true,
+    }),
+    signal,
+  })
+  if (!r.ok) {
+    let msg = `请求失败 ${r.status}`
+    try {
+      const j = await r.json()
+      msg = j.error || msg
+    } catch {
+      msg = (await r.text()) || msg
+    }
+    throw new LlmError(msg, r.status)
+  }
+  const ctype = r.headers.get('content-type') || ''
+  if (!ctype.includes('event-stream')) {
+    const text = await r.text()
+    try {
+      const j = JSON.parse(text)
+      const content = j.choices?.[0]?.message?.content || ''
+      onDelta(content)
+      return content
+    } catch {
+      throw new LlmError('端点返回了无法解析的内容')
+    }
+  }
+  return consumeSse(r, onDelta)
+}
+
+export async function testConnection(cfg: LlmConfig): Promise<{ ok: boolean; message: string; models?: string[] }> {
+  try {
+    const r = await fetch('/api/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseUrl: cfg.baseUrl, apiKey: cfg.apiKey }),
+      signal: AbortSignal.timeout(20000),
+    })
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}))
+      return { ok: false, message: j.error || `HTTP ${r.status}` }
+    }
+    const j = await r.json()
+    const models: string[] = j.models || []
+    return {
+      ok: true,
+      message: models.length ? `连接成功，可用模型 ${models.length} 个` : '连接成功',
+      models,
+    }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || '连接失败（若在纯静态环境下，可能是端点未开启 CORS）' }
+  }
+}

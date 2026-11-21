@@ -1,0 +1,446 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #06060a;
+  --color-ink-2: #0b0b13;
+  --color-ink-3: #12121c;
+  --color-gold: #d8b06a;
+  --color-gold-bright: #f2dcae;
+  --color-gold-dim: #8a6f3c;
+  --color-cinnabar: #b8473a;
+  --color-nebula: #6c5ce7;
+  --color-jade: #3fb8a8;
+  --color-mist: #a9a6b8;
+  --font-serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'STZhongsong', 'SimSun', serif;
+  --font-sans: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+  --line: rgba(216, 176, 106, 0.16);
+  --line-strong: rgba(216, 176, 106, 0.34);
+  --panel: rgba(14, 14, 22, 0.72);
+  --panel-solid: #0d0d15;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink);
+  color: #e8e6ef;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(216, 176, 106, 0.28);
+  color: #fff8e8;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(216, 176, 106, 0.2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(216, 176, 106, 0.36);
+}
+
+/* ---------- 排版 ---------- */
+.serif {
+  font-family: var(--font-serif);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.tracking-wider-2 {
+  letter-spacing: 0.22em;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 面板 ---------- */
+.panel {
+  position: relative;
+  background: linear-gradient(160deg, rgba(20, 20, 30, 0.9), rgba(10, 10, 16, 0.86));
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  backdrop-filter: blur(12px);
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  pointer-events: none;
+  background: radial-gradient(120% 80% at 50% -20%, rgba(216, 176, 106, 0.07), transparent 60%);
+}
+.panel-flat {
+  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 2px;
+}
+
+/* 四角描金 */
+.corner-frame {
+  position: relative;
+}
+.corner-frame::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--line-strong), var(--line-strong)) left top / 12px 1px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) left top / 1px 12px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) right top / 12px 1px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) right top / 1px 12px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) left bottom / 12px 1px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) left bottom / 1px 12px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) right bottom / 12px 1px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) right bottom / 1px 12px no-repeat;
+}
+
+.hairline {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  color: var(--color-gold-bright);
+  background: linear-gradient(180deg, rgba(216, 176, 106, 0.16), rgba(216, 176, 106, 0.06));
+  border: 1px solid var(--line-strong);
+  border-radius: 1px;
+  cursor: pointer;
+  transition: all 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 240, 210, 0.22) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.7s ease;
+}
+.btn:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+.btn:hover:not(:disabled) {
+  border-color: rgba(242, 220, 174, 0.6);
+  box-shadow: 0 0 24px -6px rgba(216, 176, 106, 0.5);
+  transform: translateY(-1px);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--color-mist);
+}
+.btn-ghost:hover:not(:disabled) {
+  color: var(--color-gold-bright);
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+
+/* ---------- 输入 ---------- */
+.field {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  color: #ece9f2;
+  background: rgba(6, 6, 10, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 1px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+.field:focus {
+  border-color: rgba(216, 176, 106, 0.5);
+  box-shadow: 0 0 0 3px rgba(216, 176, 106, 0.08);
+}
+.field::placeholder {
+  color: rgba(169, 166, 184, 0.4);
+}
+select.field {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-gold-dim) 50%),
+    linear-gradient(135deg, var(--color-gold-dim) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+input[type='date'].field::-webkit-calendar-picker-indicator,
+input[type='time'].field::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(1) saturate(2) hue-rotate(5deg);
+  cursor: pointer;
+}
+.label {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  color: rgba(169, 166, 184, 0.75);
+  margin-bottom: 0.45rem;
+}
+
+/* ---------- 效果 ---------- */
+.glow-gold {
+  text-shadow: 0 0 22px rgba(216, 176, 106, 0.45);
+}
+.gold-gradient {
+  background: linear-gradient(105deg, #8a6f3c 0%, #f2dcae 42%, #d8b06a 62%, #8a6f3c 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 7s linear infinite;
+}
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -80% 0;
+  }
+}
+
+.spin-slow {
+  animation: spin 120s linear infinite;
+  transform-origin: center;
+}
+.spin-rev {
+  animation: spin 80s linear infinite reverse;
+  transform-origin: center;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.breathe {
+  animation: breathe 7s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes float-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.float-up {
+  animation: float-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 3D 卡牌 */
+.card-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.9s cubic-bezier(0.3, 0.9, 0.3, 1);
+}
+.card-3d.flipped {
+  transform: rotateY(180deg);
+}
+.card-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.card-back {
+  transform: rotateY(180deg);
+}
+
+/* 牌桌微光 */
+.table-aura {
+  position: absolute;
+  width: 70vw;
+  height: 70vw;
+  max-width: 900px;
+  max-height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(108, 92, 231, 0.16), rgba(108, 92, 231, 0.04) 40%, transparent 68%);
+  pointer-events: none;
+  filter: blur(20px);
+}
+
+/* 正文流式渲染 */
+.prose-mystic h2 {
+  font-size: 1.05rem;
+  color: var(--color-gold-bright);
+  margin: 1.6rem 0 0.6rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--line-strong);
+  letter-spacing: 0.06em;
+}
+.prose-mystic h2:first-child {
+  margin-top: 0;
+}
+.prose-mystic h3 {
+  font-size: 0.95rem;
+  color: rgba(232, 230, 239, 0.92);
+  margin: 1.1rem 0 0.4rem;
+}
+.prose-mystic p {
+  color: rgba(220, 217, 232, 0.86);
+  line-height: 1.95;
+  margin: 0.6rem 0;
+  font-size: 0.94rem;
+}
+.prose-mystic strong {
+  color: var(--color-gold-bright);
+  font-weight: 500;
+}
+.prose-mystic em {
+  color: rgba(216, 176, 106, 0.9);
+  font-style: normal;
+}
+.prose-mystic ul,
+.prose-mystic ol {
+  margin: 0.6rem 0;
+  padding-left: 1.1rem;
+  color: rgba(220, 217, 232, 0.86);
+}
+.prose-mystic li {
+  margin: 0.35rem 0;
+  line-height: 1.85;
+  font-size: 0.94rem;
+}
+.prose-mystic li::marker {
+  color: var(--color-gold-dim);
+}
+.prose-mystic blockquote {
+  margin: 0.9rem 0;
+  padding: 0.6rem 1rem;
+  border-left: 2px solid rgba(184, 71, 58, 0.5);
+  background: rgba(184, 71, 58, 0.06);
+  color: rgba(230, 215, 200, 0.9);
+  font-family: var(--font-serif);
+}
+.prose-mystic hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+  margin: 1.4rem 0;
+}
+.prose-mystic table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.9rem 0;
+  font-size: 0.85rem;
+}
+.prose-mystic th,
+.prose-mystic td {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.prose-mystic th {
+  background: rgba(216, 176, 106, 0.07);
+  color: var(--color-gold);
+  font-weight: 500;
+}
+.prose-mystic code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--color-gold-bright);
+}
+
+/* 光标 */
+.caret::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--color-gold);
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* 八卦环上的刻度 */
+.ring-tick {
+  stroke: rgba(216, 176, 106, 0.22);
+  stroke-width: 0.6;
+}
+
+/* 输入区两栏 */
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .grid-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .spin-slow,
+  .spin-rev,
+  .breathe,
+  .gold-gradient {
+    animation: none !important;
+  }
+}
