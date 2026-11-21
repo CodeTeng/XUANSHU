@@ -1,0 +1,22 @@
+{
+  "relation": "普通",
+  "score": 72,
+  "dims": [
+    {
+      "label": "默契",
+      "value": 66
+    },
+    {
+      "label": "长久",
+      "value": 72
+    },
+    {
+      "label": "摩擦",
+      "value": 38
+    },
+    {
+      "label": "成长",
+      "value": 82
+    }
+  ]
+}

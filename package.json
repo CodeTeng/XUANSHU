@@ -12,7 +12,8 @@
     "serve": "node server/index.mjs",
     "start": "npm run build && npm run serve",
     "verify": "tsx scripts/verify.ts",
-    "mock": "node scripts/mock-llm.mjs"
+    "mock": "node scripts/mock-llm.mjs",
+    "test": "tsx scripts/test-snapshot.ts"
   },
   "dependencies": {
     "express": "^5.1.0",
