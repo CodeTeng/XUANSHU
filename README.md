@@ -57,6 +57,8 @@ npm run build
 npm start          # → http://127.0.0.1:8787
 ```
 
+部署到公网见 [DEPLOY.md](DEPLOY.md)（含国内可访问的三个方案与实测限制）。
+
 需要 Node 20+。`npm run serve` 只做两件事：托管 `dist/`，把浏览器请求转发到你填的模型端点（绕过 CORS）。密钥只在单次请求的内存里过一遍，不落盘、不写日志。
 
 ## 🔑 接入模型

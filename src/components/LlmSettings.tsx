@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PRESETS, testConnection, useLlm } from '../lib/llm'
 
@@ -24,6 +24,24 @@ export default function LlmSettings({ open, onClose }: { open: boolean; onClose:
   const [profileName, setProfileName] = useState('')
   const [saved, setSaved] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [proxyMode, setProxyMode] = useState<'checking' | 'proxy' | 'static'>('checking')
+
+  // 判断当前是带 Node 代理，还是纯静态直连端点
+  useEffect(() => {
+    if (!open) return
+    let alive = true
+    fetch('/api/health', { signal: AbortSignal.timeout(2500) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (alive) setProxyMode(j?.proxy ? 'proxy' : 'static')
+      })
+      .catch(() => {
+        if (alive) setProxyMode('static')
+      })
+    return () => {
+      alive = false
+    }
+  }, [open])
 
   const doTest = async () => {
     setTesting(true)
@@ -76,6 +94,25 @@ export default function LlmSettings({ open, onClose }: { open: boolean; onClose:
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#4ea87a]" />
                 <span>这套配置只属于这个浏览器。别人打开同一网址，用的是他们自己的 Key。</span>
               </div>
+              {proxyMode !== 'checking' && (
+                <div
+                  className={`mt-1.5 flex items-start gap-2 border px-2.5 py-1.5 text-[0.62rem] leading-relaxed ${
+                    proxyMode === 'proxy'
+                      ? 'border-white/10 bg-white/[0.02] text-[#8b8899]'
+                      : 'border-[rgba(201,162,39,0.28)] bg-[rgba(201,162,39,0.05)] text-[#c9b28a]'
+                  }`}
+                >
+                  <span className={`mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full ${proxyMode === 'proxy' ? 'bg-[#6c7a8a]' : 'bg-[#c9a227]'}`} />
+                  {proxyMode === 'proxy' ? (
+                    <span>当前由本站的 Node 服务转发请求（已绕开跨域限制），Key 仍只在你本机。</span>
+                  ) : (
+                    <span>
+                      当前是纯静态部署：浏览器会直连你的端点，必须端点允许跨域。
+                      已实测 DeepSeek、Moonshot 可用；智谱 GLM、SiliconFlow 会被浏览器拦。
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-6 px-6 py-6">

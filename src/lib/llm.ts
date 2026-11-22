@@ -224,6 +224,18 @@ export async function streamChat(
   } catch (e) {
     // 中途停止时上游已经计费的 token 也算数，不装作没发生
     if (produced > 0) useLlm.getState().recordUsage(promptChars, produced)
+
+    // 纯静态部署时浏览器直连端点，不支持跨域的端点会抛 Failed to fetch，
+    // 浏览器不会告诉你原因，这里换成能看懂的说法
+    const msg = (e as Error)?.message || String(e)
+    if (/failed to fetch|networkerror|load failed|fetch failed/i.test(msg)) {
+      throw new LlmError(
+        '网络请求失败。如果你是在纯静态环境（没有 Node 代理）打开本站，浏览器会直连你的模型端点；' +
+          '部分端点不允许跨域，浏览器会直接拦掉且不给原因。\n' +
+          '已实测：DeepSeek、Moonshot 允许跨域；智谱 GLM、SiliconFlow 会被拦。\n' +
+          '换一个允许跨域的端点，或使用带代理的部署方式。',
+      )
+    }
     throw e
   }
 }
