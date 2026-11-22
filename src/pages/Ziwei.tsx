@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { calcZiwei, ziweiToText, hourToTimeIndex, type ZiweiInput } from '../lib/astro/ziwei'
 import { useUi } from '../lib/uiStore'
+import { CURRENT_YEAR, BIRTH_YEARS, MINUTE_OPTIONS, daysInSolarMonth } from '../lib/constants'
 import { ziweiPrompt } from '../lib/prompts'
 import ReadingPanel, { useReading } from '../components/ReadingPanel'
 import { SectionTitle, Field, SegTabs, Badge, Reveal } from '../components/ui'
@@ -27,9 +28,9 @@ export default function ZiweiPage() {
   const [form, setForm] = useState({
     gender: '男' as '男' | '女',
     calendar: 'solar' as 'solar' | 'lunar',
-    year: 1990,
-    month: 5,
-    day: 15,
+    year: CURRENT_YEAR,
+    month: 1,
+    day: 1,
     hour: 12,
     minute: 0,
     leap: false,
@@ -37,6 +38,11 @@ export default function ZiweiPage() {
   const [question, setQuestion] = useState('')
   const [picked, setPicked] = useState<string | null>(null)
   const reading = useReading()
+
+  const maxDay = form.calendar === 'solar' ? daysInSolarMonth(form.year, form.month) : 30
+  useEffect(() => {
+    if (form.day > maxDay) setForm((f) => ({ ...f, day: maxDay }))
+  }, [maxDay])
 
   const input: ZiweiInput = {
     year: form.year, month: form.month, day: form.day,
@@ -124,8 +130,8 @@ export default function ZiweiPage() {
               <div className="grid-form">
                 <Field label="年">
                   <select className="field" value={form.year} onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}>
-                    {Array.from({ length: 101 }, (_, i) => 1920 + i).reverse().map((y) => (
-                      <option key={y} value={y}>{y}</option>
+                    {BIRTH_YEARS.map((y) => (
+                      <option key={y} value={y}>{y}{y === CURRENT_YEAR ? '（今年）' : ''}</option>
                     ))}
                   </select>
                 </Field>
@@ -135,19 +141,27 @@ export default function ZiweiPage() {
                       {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}</option>)}
                     </select>
                     <select className="field min-w-0 flex-1" value={form.day} onChange={(e) => setForm({ ...form, day: Number(e.target.value) })}>
-                      {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
+                      {Array.from({ length: form.calendar === 'solar' ? daysInSolarMonth(form.year, form.month) : 30 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d} 日</option>)}
                     </select>
                   </div>
                 </Field>
               </div>
-              <Field label="出生时辰" hint={`对应索引 ${hourToTimeIndex(form.hour)}：${form.hour === 23 ? '晚子时' : BRANCH_ORDER[Math.floor(((form.hour + 1) % 24) / 2)] + '时'}`}>
-                <select className="field" value={form.hour} onChange={(e) => setForm({ ...form, hour: Number(e.target.value) })}>
-                  {Array.from({ length: 24 }, (_, i) => i).map((h) => (
-                    <option key={h} value={h}>
-                      {String(h).padStart(2, '0')}:00 · {h === 23 ? '晚子时' : BRANCH_ORDER[Math.floor(((h + 1) % 24) / 2)] + '时'}
-                    </option>
-                  ))}
-                </select>
+              <Field
+                label="出生时刻"
+                hint={`${String(form.hour).padStart(2, '0')}:${String(form.minute).padStart(2, '0')} · ${form.hour === 23 ? '晚子时' : BRANCH_ORDER[Math.floor(((form.hour + 1) % 24) / 2)] + '时'}（时辰索引 ${hourToTimeIndex(form.hour)}）`}
+              >
+                <div className="flex gap-2">
+                  <select className="field min-w-0 flex-1" value={form.hour} onChange={(e) => setForm({ ...form, hour: Number(e.target.value) })}>
+                    {Array.from({ length: 24 }, (_, i) => i).map((h) => (
+                      <option key={h} value={h}>{String(h).padStart(2, '0')} 时</option>
+                    ))}
+                  </select>
+                  <select className="field min-w-0 flex-1" value={form.minute} onChange={(e) => setForm({ ...form, minute: Number(e.target.value) })}>
+                    {MINUTE_OPTIONS.map((m) => (
+                      <option key={m} value={m}>{String(m).padStart(2, '0')} 分</option>
+                    ))}
+                  </select>
+                </div>
               </Field>
               <div className="hairline" />
               <Field label="想问的事（可选）">

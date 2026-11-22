@@ -1,13 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { calcBazi, baziToText, type BaziInput } from '../lib/astro/bazi'
-import { WUXING, WUXING_COLOR, SHICHEN, SHICHEN_RANGE } from '../lib/constants'
+import { WUXING, WUXING_COLOR, SHICHEN, SHICHEN_RANGE, CURRENT_YEAR, BIRTH_YEARS, MINUTE_OPTIONS, daysInSolarMonth } from '../lib/constants'
 import { useUi } from '../lib/uiStore'
 import { baziPrompt } from '../lib/prompts'
 import ReadingPanel, { useReading } from '../components/ReadingPanel'
 import { SectionTitle, Field, SegTabs, Stat, Badge, Empty, Reveal, Term } from '../components/ui'
 
-const YEARS = Array.from({ length: 101 }, (_, i) => 1920 + i).reverse()
 
 /** 同一对柱子之间的多种关系合并成一条弧，颜色取最强者 */
 const REL_PRIORITY: Record<string, number> = { 冲: 4, 刑: 3, 自刑: 3, 害: 2, 六合: 1, 合: 1 }
@@ -36,11 +35,11 @@ export default function BaziPage() {
     name: '',
     gender: '男' as '男' | '女',
     calendar: 'solar' as 'solar' | 'lunar',
-    year: 1995,
-    month: 8,
-    day: 20,
-    hour: 10,
-    minute: 30,
+    year: CURRENT_YEAR,
+    month: 1,
+    day: 1,
+    hour: 12,
+    minute: 0,
     leap: false,
     unknownHour: false,
     place: '',
@@ -48,6 +47,12 @@ export default function BaziPage() {
   })
   const [question, setQuestion] = useState('')
   const reading = useReading()
+
+  // 换了月份导致日期超出当月天数时，回落到月末
+  const maxDay = form.calendar === 'solar' ? daysInSolarMonth(form.year, form.month) : 30
+  useEffect(() => {
+    if (form.day > maxDay) setForm((f) => ({ ...f, day: maxDay }))
+  }, [maxDay])
 
   const input: BaziInput = {
     year: form.year, month: form.month, day: form.day,
@@ -116,8 +121,8 @@ export default function BaziPage() {
               <div className="grid-form">
                 <Field label="年">
                   <select className="field" value={form.year} onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}>
-                    {YEARS.map((y) => (
-                      <option key={y} value={y}>{y}</option>
+                    {BIRTH_YEARS.map((y) => (
+                      <option key={y} value={y}>{y}{y === CURRENT_YEAR ? '（今年）' : ''}</option>
                     ))}
                   </select>
                 </Field>
@@ -129,7 +134,7 @@ export default function BaziPage() {
                       ))}
                     </select>
                     <select className="field min-w-0 flex-1" value={form.day} onChange={(e) => setForm({ ...form, day: Number(e.target.value) })}>
-                      {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
+                      {Array.from({ length: form.calendar === 'solar' ? daysInSolarMonth(form.year, form.month) : 30 }, (_, i) => i + 1).map((d) => (
                         <option key={d} value={d}>{d} 日</option>
                       ))}
                     </select>
@@ -144,7 +149,7 @@ export default function BaziPage() {
                 </label>
               )}
 
-              <Field label="出生时间" hint={!form.unknownHour ? `对应 ${SHICHEN[Math.floor(((form.hour + 1) % 24) / 2)]}时 · ${SHICHEN_RANGE[Math.floor(((form.hour + 1) % 24) / 2)]}` : '时辰不详时只排六字'}>
+              <Field label="出生时间" hint={form.unknownHour ? '时辰不详时只排六字' : `${String(form.hour).padStart(2, '0')}:${String(form.minute).padStart(2, '0')} · ${SHICHEN[Math.floor(((form.hour + 1) % 24) / 2)]}时`}>
                 <div className="flex gap-2">
                   <select
                     className="field min-w-0 flex-1"
@@ -162,7 +167,7 @@ export default function BaziPage() {
                     disabled={form.unknownHour}
                     onChange={(e) => setForm({ ...form, minute: Number(e.target.value) })}
                   >
-                    {[0, 10, 20, 30, 40, 50].map((m) => (
+                    {MINUTE_OPTIONS.map((m) => (
                       <option key={m} value={m}>{String(m).padStart(2, '0')} 分</option>
                     ))}
                   </select>
@@ -224,7 +229,21 @@ export default function BaziPage() {
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <Stat label="公历" value={<span className="text-[0.86rem]">{chart.data.solarText}</span>} />
                   <Stat label="起运" value={<span className="text-[0.82rem]">{chart.data.startLuck.years} 年 {chart.data.startLuck.months} 月</span>} hint={chart.data.startLuck.forward ? '顺排' : '逆排'} />
-                  <Stat label="当前大运" value={<span className="text-[0.95rem]">{chart.data.daYun[chart.data.currentDaYunIndex]?.ganZhi ?? '—'}</span>} hint={chart.data.daYun[chart.data.currentDaYunIndex] ? `${chart.data.daYun[chart.data.currentDaYunIndex].startYear}–${chart.data.daYun[chart.data.currentDaYunIndex].endYear}` : ''} />
+                  <Stat
+                    label="当前大运"
+                    value={
+                      chart.data.currentDaYunIndex >= 0 ? (
+                        <span className="text-[0.95rem]">{chart.data.daYun[chart.data.currentDaYunIndex]?.ganZhi}</span>
+                      ) : (
+                        <span className="text-[0.86rem] text-[#8b8899]">未起运</span>
+                      )
+                    }
+                    hint={
+                      chart.data.currentDaYunIndex >= 0
+                        ? `${chart.data.daYun[chart.data.currentDaYunIndex].startYear}–${chart.data.daYun[chart.data.currentDaYunIndex].endYear}`
+                        : `${chart.data.input.year + chart.data.startLuck.years} 年起运`
+                    }
+                  />
                   <Stat label="命宫 / 胎元" value={<span className="text-[0.86rem]">{chart.data.mingGong} / {chart.data.taiYuan}</span>} />
                 </div>
               </div>
@@ -436,7 +455,7 @@ export default function BaziPage() {
 
               {/* 大运 */}
               <div className="panel corner-frame p-5">
-                <SectionTitle index="LUCK" title="大运" desc="每十年一步，当前运高亮。横向滚动查看全部" />
+                <SectionTitle index="LUCK" title="大运" desc={chart.data.currentDaYunIndex >= 0 ? '每十年一步，当前运高亮。横向滚动查看全部' : '尚未起运，下列为未来各步大运'} />
                 <div className="relative -mx-1 overflow-x-auto pb-2">
                   <div className="flex gap-1.5 px-1">
                     {chart.data.daYun.map((d, i) => {

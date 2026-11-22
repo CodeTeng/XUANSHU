@@ -4,6 +4,7 @@ import { useUi } from '../lib/uiStore'
 import { lovePrompt } from '../lib/prompts'
 import ReadingPanel, { useReading } from '../components/ReadingPanel'
 import { SectionTitle, Field, SegTabs, Badge, Stat, Empty, Reveal } from '../components/ui'
+import { CURRENT_YEAR, BIRTH_YEARS, MINUTE_OPTIONS, daysInSolarMonth } from '../lib/constants'
 import { zodiacPair, hehun, taohua, drawStick, redThread, type ZodiacPair } from '../lib/love/match'
 import { calcBazi, type BaziInput } from '../lib/astro/bazi'
 import { calcZiwei } from '../lib/astro/ziwei'
@@ -57,21 +58,26 @@ function PersonInput({
       </div>
       <div className="grid grid-cols-3 gap-1.5">
         <select className="field !px-2 !text-[0.74rem]" value={value.year} onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}>
-          {Array.from({ length: 81 }, (_, i) => 1950 + i).reverse().map((y) => <option key={y} value={y}>{y}</option>)}
+          {BIRTH_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
         <select className="field !px-2 !text-[0.74rem]" value={value.month} onChange={(e) => onChange({ ...value, month: Number(e.target.value) })}>
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}月</option>)}
         </select>
-        <select className="field !px-2 !text-[0.74rem]" value={value.day} onChange={(e) => onChange({ ...value, day: Number(e.target.value) })}>
-          {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}日</option>)}
+        <select className="field !px-2 !text-[0.74rem]" value={Math.min(value.day, daysInSolarMonth(value.year, value.month))} onChange={(e) => onChange({ ...value, day: Number(e.target.value) })}>
+          {Array.from({ length: daysInSolarMonth(value.year, value.month) }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}日</option>)}
         </select>
       </div>
-      <div className="mt-1.5">
-        <select className="field !px-2 !text-[0.74rem]" value={value.hour} onChange={(e) => onChange({ ...value, hour: Number(e.target.value) })}>
+      <div className="mt-1.5 flex gap-1.5">
+        <select className="field min-w-0 flex-1 !px-2 !text-[0.74rem]" value={value.hour} onChange={(e) => onChange({ ...value, hour: Number(e.target.value) })}>
           {Array.from({ length: 24 }, (_, i) => i).map((h) => (
             <option key={h} value={h}>
-              {String(h).padStart(2, '0')}:00 · {['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'][Math.floor(((h + 1) % 24) / 2)]}时
+              {String(h).padStart(2, '0')} 时 · {['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'][Math.floor(((h + 1) % 24) / 2)]}
             </option>
+          ))}
+        </select>
+        <select className="field min-w-0 flex-1 !px-2 !text-[0.74rem]" value={value.minute} onChange={(e) => onChange({ ...value, minute: Number(e.target.value) })}>
+          {MINUTE_OPTIONS.map((m) => (
+            <option key={m} value={m}>{String(m).padStart(2, '0')} 分</option>
           ))}
         </select>
       </div>
@@ -123,8 +129,8 @@ function RedThreadViz({ a, b, score }: { a: string; b: string; score: number }) 
 export default function LovePage() {
   const openSettings = useUi((s) => s.openSettings)
   const [mode, setMode] = useState<Mode>('zodiac')
-  const [a, setA] = useState<PersonForm>({ year: 1995, month: 8, day: 20, hour: 10, minute: 0, gender: '男' })
-  const [b, setB] = useState<PersonForm>({ year: 1996, month: 3, day: 12, hour: 14, minute: 0, gender: '女' })
+  const [a, setA] = useState<PersonForm>({ year: CURRENT_YEAR, month: 1, day: 1, hour: 12, minute: 0, gender: '男' })
+  const [b, setB] = useState<PersonForm>({ year: CURRENT_YEAR, month: 1, day: 1, hour: 12, minute: 0, gender: '女' })
   const [name, setName] = useState('')
   const [question, setQuestion] = useState('')
   const reading = useReading()

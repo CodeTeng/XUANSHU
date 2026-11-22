@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useUi } from '../lib/uiStore'
+import { CURRENT_YEAR, BIRTH_YEARS } from '../lib/constants'
 import { fengshuiPrompt } from '../lib/prompts'
 import ReadingPanel, { useReading } from '../components/ReadingPanel'
 import Compass from '../components/Compass'
@@ -36,7 +37,7 @@ export default function FengshuiPage() {
   const [sit, setSit] = useState('子')
   const [moveInYear, setMoveInYear] = useState(new Date().getFullYear() - 3)
   const [tigua, setTigua] = useState(false)
-  const [birthYear, setBirthYear] = useState(1990)
+  const [birthYear, setBirthYear] = useState(CURRENT_YEAR)
   const [gender, setGender] = useState<'男' | '女'>('男')
   const [houseGua, setHouseGua] = useState('坎')
   const [event, setEvent] = useState('入宅')
@@ -167,7 +168,7 @@ export default function FengshuiPage() {
               <div className="space-y-4">
                 <Field label="出生年份" hint="命卦以立春分年，年初出生请留意">
                   <select className="field" value={birthYear} onChange={(e) => setBirthYear(Number(e.target.value))}>
-                    {Array.from({ length: 81 }, (_, i) => 1950 + i).reverse().map((y) => <option key={y} value={y}>{y}</option>)}
+                    {BIRTH_YEARS.map((y) => <option key={y} value={y}>{y}{y === CURRENT_YEAR ? '（今年）' : ''}</option>)}
                   </select>
                 </Field>
                 <Field label="性别">

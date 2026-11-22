@@ -164,7 +164,7 @@ server/index.mjs      static hosting + /api/llm proxy
 
 ## 📄 License
 
-MIT. Traditional rules and classical quotations are public domain. The five source repositories keep their own terms — see [NOTICE.md](NOTICE.md).
+MIT. Traditional rules and classical quotations are public domain.
 
 <div align="center">
 

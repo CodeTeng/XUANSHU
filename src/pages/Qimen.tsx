@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { calcQimen, qimenToText, QIMEN_GRID, type QimenChart } from '../lib/astro/qimen'
+import { CURRENT_YEAR, BIRTH_YEARS, MINUTE_OPTIONS } from '../lib/constants'
 import { useUi } from '../lib/uiStore'
 import { qimenPrompt } from '../lib/prompts'
 import ReadingPanel, { useReading } from '../components/ReadingPanel'
@@ -41,7 +42,7 @@ export default function QimenPage() {
 
   const useNow = () => {
     const d = new Date()
-    setForm({ ...form, year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: 0 })
+    setForm({ ...form, year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes() })
   }
 
   const start = () => {
@@ -68,7 +69,7 @@ export default function QimenPage() {
               <div className="grid grid-cols-3 gap-2">
                 <Field label="年">
                   <select className="field !px-2" value={form.year} onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}>
-                    {Array.from({ length: 41 }, (_, i) => 2006 + i).map((y) => <option key={y} value={y}>{y}</option>)}
+                    {BIRTH_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </Field>
                 <Field label="月">
@@ -82,14 +83,21 @@ export default function QimenPage() {
                   </select>
                 </Field>
               </div>
-              <Field label="时辰">
-                <select className="field" value={form.hour} onChange={(e) => setForm({ ...form, hour: Number(e.target.value) })}>
-                  {Array.from({ length: 24 }, (_, i) => i).map((h) => (
-                    <option key={h} value={h}>
-                      {String(h).padStart(2, '0')}:00 · {['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'][Math.floor(((h + 1) % 24) / 2)]}时
-                    </option>
-                  ))}
-                </select>
+              <Field label="起局时刻" hint="分钟仅作记录；时家奇门按整时辰起局，盘面不随分钟变化">
+                <div className="flex gap-2">
+                  <select className="field min-w-0 flex-1" value={form.hour} onChange={(e) => setForm({ ...form, hour: Number(e.target.value) })}>
+                    {Array.from({ length: 24 }, (_, i) => i).map((h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, '0')} 时 · {['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'][Math.floor(((h + 1) % 24) / 2)]}
+                      </option>
+                    ))}
+                  </select>
+                  <select className="field min-w-0 flex-1" value={form.minute} onChange={(e) => setForm({ ...form, minute: Number(e.target.value) })}>
+                    {MINUTE_OPTIONS.map((m) => (
+                      <option key={m} value={m}>{String(m).padStart(2, '0')} 分</option>
+                    ))}
+                  </select>
+                </div>
               </Field>
               <div className="hairline" />
               <Field label="所问之事" hint="奇门讲究一事一局，问得越具体，用神越准">
@@ -127,7 +135,7 @@ export default function QimenPage() {
 
 function NinePalace({ chart, animKey }: { chart: QimenChart; animKey: number }) {
   const byNo = Object.fromEntries(chart.palaces.map((p) => [p.palace, p]))
-  const delayOf = (no: number) => Math.max(0, FLY_ORDER.indexOf(no)) * 0.075
+  const delayOf = (no: number) => Math.max(0, FLY_ORDER.indexOf(no)) * 0.052
 
   return (
     <div className="panel corner-frame p-4 sm:p-5">

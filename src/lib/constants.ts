@@ -63,3 +63,17 @@ export function hourToShichen(hour: number): number {
 }
 
 export const NAYIN: Record<string, string> = {} // 由 lunar-javascript 提供，占位避免误用
+
+/** 当年。年份下拉的默认值与上限 */
+export const CURRENT_YEAR = new Date().getFullYear()
+
+/** 出生年份候选：当年往前推 100 年，倒序（当年在最前） */
+export const BIRTH_YEARS: number[] = Array.from({ length: 101 }, (_, i) => CURRENT_YEAR - i)
+
+/** 分钟候选：0–59 全量 */
+export const MINUTE_OPTIONS: number[] = Array.from({ length: 60 }, (_, i) => i)
+
+/** 某年某月（公历）的天数 */
+export function daysInSolarMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
